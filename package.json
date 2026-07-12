@@ -2,9 +2,9 @@
   "name": "sentinel-x",
   "version": "0.0.1",
   "description": "Advanced Discord Security Platform",
-  "main": "bot/index.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node bot/index.js",
+    "start": "node index.js",
     "dev": "node --watch bot/index.js"
   },
   "keywords": [
