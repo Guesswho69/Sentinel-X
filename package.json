@@ -1,14 +1,17 @@
 {
   "name": "sentinel-x",
-  "version": "0.0.1",
-  "description": "Advanced AI-Powered Discord Security Platform",
+  "version": "1.0.0",
+  "description": "Sentinel-X - Advanced Discord Security Bot",
   "main": "bot/index.js",
   "scripts": {
-    "start": "node bot/index.js",
-    "dev": "node bot/index.js"
+    "start": "node bot/index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
-    "discord.js": "^14.18.0",
-    "dotenv": "^16.4.7"
-  }
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5"
+  },
+  "license": "MIT"
 }
