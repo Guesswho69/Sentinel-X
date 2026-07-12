@@ -9,7 +9,8 @@
  *
  * This runs as its own process, separate from the Discord bot
  * (bot/index.js). It never touches Discord passwords, and the only thing
- * it persists to disk is per-guild configuration (see dashboard/db.js) -
+ * it persists to disk is per-guild configuration - via shared/guildConfigStore.js,
+ * the same store the bot process reads from (see dashboard/services/guildConfigService.js).
  * OAuth access tokens live only in the in-memory session for the duration
  * of that session.
  */
