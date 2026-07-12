@@ -40,11 +40,14 @@ app.use(
         secret: config.SESSION_SECRET,
         resave: false,
         saveUninitialized: false,
+        rolling: true, // reset the expiry countdown on every request, so an
+                        // active user stays logged in instead of being kicked
+                        // out exactly 24h after their original login
         cookie: {
             httpOnly: true,
             sameSite: 'lax',
             secure: config.NODE_ENV === 'production',
-            maxAge: 1000 * 60 * 60 * 24, // 24 hours
+            maxAge: 1000 * 60 * 60 * 24, // 24 hours of inactivity before expiry
         },
         // Default MemoryStore is fine for a single-instance foundation build.
         // Replace with a persistent store (Redis, connect-sqlite3, etc.) before
