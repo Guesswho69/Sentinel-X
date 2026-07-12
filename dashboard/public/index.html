@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel-X · Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0D1117;
+    --surface: #151B23;
+    --surface-raised: #1C242E;
+    --border: #262E38;
+    --text: #E6EDF3;
+    --text-muted: #8B96A5;
+    --accent: #4A9EBA;
+    --accent-dim: rgba(74, 158, 186, 0.15);
+    --good: #3FB68B;
+    --good-dim: rgba(63, 182, 139, 0.15);
+    --warn: #E3B341;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(74, 158, 186, 0.06), transparent 45%),
+      radial-gradient(circle at 85% 100%, rgba(63, 182, 139, 0.05), transparent 40%);
+  }
+
+  a { color: inherit; }
+
+  /* ---------- Layout shell ---------- */
+
+  .shell {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+  }
+
+  header.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 36px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(155deg, var(--accent), #2C6E86);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: #061014;
+    flex-shrink: 0;
+  }
+
+  .brand-text h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: 0.01em;
+  }
+
+  .brand-text p {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 999px;
+  }
+
+  .pulse-dot {
+    position: relative;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--good);
+    flex-shrink: 0;
+  }
+
+  .pulse-dot::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 1.5px solid var(--good);
+    opacity: 0;
+    animation: ping 2.2s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+  }
+
+  @keyframes ping {
+    0%   { transform: scale(0.6); opacity: 0.7; }
+    70%  { transform: scale(2.1); opacity: 0; }
+    100% { transform: scale(2.1); opacity: 0; }
+  }
+
+  #clock { color: var(--text); }
+
+  /* ---------- Section heading ---------- */
+
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 16px;
+  }
+
+  /* ---------- Status grid ---------- */
+
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 20px;
+    transition: border-color 0.25s ease;
+  }
+
+  .card.ok { border-left-color: var(--good); }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  .card-label {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+  }
+
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 5px;
+    background: var(--good-dim);
+    color: var(--good);
+  }
+
+  .status-chip .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .card-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+
+  .card-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  /* ---------- Detail panel ---------- */
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 26px;
+  }
+
+  .panel-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+  }
+
+  .panel-row:last-child { border-bottom: none; }
+
+  .panel-row .k { color: var(--text-muted); }
+  .panel-row .v {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+  }
+
+  footer {
+    margin-top: 40px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ---------- Responsive ---------- */
+
+  @media (max-width: 720px) {
+    .status-grid { grid-template-columns: 1fr; }
+    header.topbar { align-items: flex-start; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pulse-dot::before { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">SX</div>
+      <div class="brand-text">
+        <h1>Sentinel-X</h1>
+        <p>Security Dashboard</p>
+      </div>
+    </div>
+    <div class="live-indicator">
+      <span class="pulse-dot"></span>
+      <span id="connection-label">Connecting…</span>
+      <span id="clock">--:--:--</span>
+    </div>
+    <a class="section-label" href="/login.html" style="text-decoration:none; border:1px solid var(--border); padding:8px 14px; border-radius:999px; margin:0;">Manage Servers →</a>
+  </header>
+
+  <p class="section-label">Overview</p>
+
+  <div class="status-grid">
+    <div class="card" id="card-bot">
+      <div class="card-top">
+        <span class="card-label">Bot Status</span>
+        <span class="status-chip"><span class="dot"></span><span class="chip-text">—</span></span>
+      </div>
+      <p class="card-value" id="bot-value">—</p>
+      <p class="card-sub">Discord connection</p>
+    </div>
+
+    <div class="card" id="card-security">
+      <div class="card-top">
+        <span class="card-label">Security Core</span>
+        <span class="status-chip"><span class="dot"></span><span class="chip-text">—</span></span>
+      </div>
+      <p class="card-value" id="security-value">—</p>
+      <p class="card-sub">Anti-spam · Anti-link engine</p>
+    </div>
+
+    <div class="card" id="card-system">
+      <div class="card-top">
+        <span class="card-label">System</span>
+        <span class="status-chip"><span class="dot"></span><span class="chip-text">—</span></span>
+      </div>
+      <p class="card-value" id="system-value">—</p>
+      <p class="card-sub" id="system-sub">Dashboard uptime</p>
+    </div>
+  </div>
+
+  <p class="section-label">Details</p>
+
+  <div class="panel">
+    <div class="panel-row">
+      <span class="k">Project</span>
+      <span class="v" id="detail-project">—</span>
+    </div>
+    <div class="panel-row">
+      <span class="k">Last checked</span>
+      <span class="v" id="detail-timestamp">—</span>
+    </div>
+    <div class="panel-row">
+      <span class="k">Uptime</span>
+      <span class="v" id="detail-uptime">—</span>
+    </div>
+    <div class="panel-row">
+      <span class="k">Version</span>
+      <span class="v" id="detail-version">—</span>
+    </div>
+  </div>
+
+  <footer>Sentinel-X Dashboard · foundation build</footer>
+
+</div>
+
+<script>
+  // Live clock in the top bar
+  function tickClock() {
+    const el = document.getElementById('clock');
+    el.textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  function formatUptime(seconds) {
+    if (typeof seconds !== 'number' || Number.isNaN(seconds)) return '—';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return [h, m, s].map((n) => String(n).padStart(2, '0')).join(':');
+  }
+
+  function setChip(cardId, text, isGood) {
+    const card = document.getElementById(cardId);
+    const chip = card.querySelector('.status-chip');
+    const chipText = card.querySelector('.chip-text');
+    chipText.textContent = text;
+    card.classList.toggle('ok', !!isGood);
+    chip.style.color = isGood ? 'var(--good)' : 'var(--warn)';
+    chip.style.background = isGood ? 'var(--good-dim)' : 'rgba(227, 179, 65, 0.15)';
+  }
+
+  async function refreshStatus() {
+    const connectionLabel = document.getElementById('connection-label');
+    try {
+      const res = await fetch('/api/status', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Bad response: ' + res.status);
+      const data = await res.json();
+
+      connectionLabel.textContent = 'Live';
+
+      // Bot status
+      const botOnline = data.bot?.status === 'online';
+      document.getElementById('bot-value').textContent = botOnline ? 'Online' : 'Offline';
+      setChip('card-bot', botOnline ? 'Online' : 'Offline', botOnline);
+
+      // Security engine
+      const secActive = data.security?.engine === 'active';
+      document.getElementById('security-value').textContent = secActive ? 'Active' : 'Inactive';
+      setChip('card-security', secActive ? 'Active' : 'Inactive', secActive);
+
+      // System
+      const sysRunning = data.system?.status === 'running';
+      document.getElementById('system-value').textContent = sysRunning ? 'Running' : 'Degraded';
+      setChip('card-system', sysRunning ? 'Running' : 'Degraded', sysRunning);
+      document.getElementById('system-sub').textContent =
+        'Uptime ' + formatUptime(data.system?.uptimeSeconds);
+
+      // Detail panel
+      document.getElementById('detail-project').textContent = data.project || '—';
+      document.getElementById('detail-timestamp').textContent =
+        new Date(data.timestamp).toLocaleString();
+      document.getElementById('detail-uptime').textContent =
+        formatUptime(data.system?.uptimeSeconds);
+      document.getElementById('detail-version').textContent = data.version ? 'v' + data.version : '—';
+
+    } catch (error) {
+      connectionLabel.textContent = 'Offline';
+      console.error('Sentinel-X: failed to fetch status', error);
+      ['card-bot', 'card-security', 'card-system'].forEach((id) => setChip(id, 'Unknown', false));
+    }
+  }
+
+  refreshStatus();
+  setInterval(refreshStatus, 10000);
+</script>
+
+</body>
+</html>
