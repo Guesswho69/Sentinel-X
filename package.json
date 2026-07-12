@@ -1,18 +1,14 @@
 {
   "name": "sentinel-x",
   "version": "0.0.1",
-  "description": "Advanced Discord Security Platform",
-  "main": "index.js",
+  "description": "Advanced AI-Powered Discord Security Platform",
+  "main": "bot/index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js"
+    "start": "node bot/index.js",
+    "dev": "node bot/index.js"
   },
-  "keywords": [
-    "discord",
-    "discord-bot",
-    "security",
-    "moderation",
-    "sentinel-x"
-  ],
-  "author": "Miyo"
+  "dependencies": {
+    "discord.js": "^14.18.0",
+    "dotenv": "^16.4.7"
+  }
 }
