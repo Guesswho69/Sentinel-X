@@ -1,1 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel-X · Server settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/theme.css">
+<style>
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: none;
+    margin-bottom: 20px;
+  }
 
+  .back-link:hover { color: var(--text); }
+
+  .guild-heading {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+
+  .guild-icon-lg {
+    width: 48px;
+    height: 48px;
+    border-radius: 11px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    object-fit: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+
+  .guild-heading h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    margin: 0;
+  }
+
+  .save-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  #save-status {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .panel + .panel { margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">SX</div>
+      <div class="brand-text">
+        <h1>Sentinel-X</h1>
+        <p>Server settings</p>
+      </div>
+    </div>
+    <div class="session-box">
+      <img class="avatar" id="user-avatar" alt="">
+      <span id="user-name">—</span>
+      <form action="/auth/logout" method="POST">
+        <button class="btn btn-ghost" type="submit">Log out</button>
+      </form>
+    </div>
+  </header>
+
+  <a class="back-link" href="/guilds.html">&larr; All servers</a>
+
+  <div id="error-alert" class="alert hidden"></div>
+
+  <div id="content" style="display:none;">
+    <div class="guild-heading">
+      <div class="guild-icon-lg" id="guild-icon">SX</div>
+      <h1 id="guild-name">Server</h1>
+    </div>
+
+    <p class="section-label">Commands</p>
+    <div class="panel" id="commands-panel"></div>
+
+    <p class="section-label" style="margin-top:28px;">Security modules</p>
+    <div class="panel" id="security-panel"></div>
+
+    <div class="save-bar">
+      <button class="btn btn-primary" id="save-btn">Save changes</button>
+      <span id="save-status"></span>
+    </div>
+  </div>
+
+  <footer class="page-footer">Sentinel-X Dashboard · foundation build</footer>
+
+</div>
+
+<script>
+  const COMMAND_LABELS = {
+    ban: { label: 'Ban', hint: 'Removes a member from the server permanently' },
+    kick: { label: 'Kick', hint: 'Removes a member; they can rejoin with an invite' },
+    mute: { label: 'Mute', hint: 'Temporarily restricts a member from sending messages' },
+    purge: { label: 'Purge', hint: 'Bulk-deletes recent messages in a channel' },
+    warn: { label: 'Warn', hint: 'Issues a logged warning to a member' },
+  };
+
+  const SECURITY_LABELS = {
+    antiSpam: { label: 'Anti-Spam', hint: 'Detects and blocks message flooding' },
+    antiLink: { label: 'Anti-Link', hint: 'Removes suspicious/unapproved links' },
+  };
+
+  const params = new URLSearchParams(window.location.search);
+  const guildId = params.get('guild');
+
+  let currentConfig = null;
+
+  function showError(message) {
+    const el = document.getElementById('error-alert');
+    el.textContent = message;
+    el.classList.remove('hidden');
+  }
+
+  function renderToggles(containerId, labels, values) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = Object.keys(labels).map((key) => {
+      const meta = labels[key];
+      const checked = !!values[key];
+      return `
+        <div class="toggle-row">
+          <div>
+            <div class="label">${meta.label}</div>
+            <div class="hint">${meta.hint}</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-key="${key}" ${checked ? 'checked' : ''}>
+            <span class="track"></span>
+          </label>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function loadSession() {
+    const res = await fetch('/api/session', { cache: 'no-store' });
+    const data = await res.json();
+    if (!data.authenticated) {
+      window.location.href = '/login.html';
+      return;
+    }
+    const user = data.user;
+    document.getElementById('user-name').textContent = user.globalName || user.username;
+    const avatarEl = document.getElementById('user-avatar');
+    if (user.avatar) {
+      avatarEl.src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`;
+    } else {
+      avatarEl.style.display = 'none';
+    }
+  }
+
+  async function loadConfig() {
+    if (!guildId) {
+      showError('No server selected.');
+      return;
+    }
+
+    const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/config`, { cache: 'no-store' });
+
+    if (res.status === 401) {
+      window.location.href = '/login.html';
+      return;
+    }
+    if (res.status === 403) {
+      showError('You do not have access to manage this server.');
+      return;
+    }
+    if (!res.ok) {
+      showError('Failed to load server configuration.');
+      return;
+    }
+
+    currentConfig = await res.json();
+    document.getElementById('guild-name').textContent = currentConfig.guildName || guildId;
+    renderToggles('commands-panel', COMMAND_LABELS, currentConfig.commands);
+    renderToggles('security-panel', SECURITY_LABELS, currentConfig.securityModules);
+    document.getElementById('content').style.display = 'block';
+  }
+
+  function collectToggleValues(containerId) {
+    const container = document.getElementById(containerId);
+    const values = {};
+    container.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+      values[input.dataset.key] = input.checked;
+    });
+    return values;
+  }
+
+  async function saveConfig() {
+    const statusEl = document.getElementById('save-status');
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true;
+    statusEl.textContent = 'Saving…';
+
+    const payload = {
+      commands: collectToggleValues('commands-panel'),
+      securityModules: collectToggleValues('security-panel'),
+    };
+
+    try {
+      const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error('Save failed');
+
+      currentConfig = await res.json();
+      statusEl.textContent = 'Saved ' + new Date(currentConfig.updatedAt).toLocaleTimeString();
+    } catch (err) {
+      statusEl.textContent = 'Failed to save changes.';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById('save-btn').addEventListener('click', saveConfig);
+
+  loadSession();
+  loadConfig();
+</script>
+
+</body>
+</html>
