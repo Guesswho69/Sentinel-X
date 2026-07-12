@@ -1,1 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel-X · Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/theme.css">
+<style>
+  .login-shell {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 96px 24px;
+    text-align: center;
+  }
 
+  .login-card {
+    padding: 40px 32px;
+  }
+
+  .brand-mark-lg {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    margin: 0 auto 20px;
+    background: linear-gradient(155deg, var(--accent), #2C6E86);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    color: #061014;
+  }
+
+  .login-card h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px;
+    margin: 0 0 8px;
+  }
+
+  .login-card p.sub {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin: 0 0 28px;
+  }
+
+  .discord-btn {
+    width: 100%;
+    padding: 13px 18px;
+    font-size: 15px;
+  }
+
+  .fine-print {
+    margin-top: 22px;
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<div class="login-shell">
+  <div class="card login-card">
+    <div class="brand-mark-lg">SX</div>
+    <h1>Sentinel-X Dashboard</h1>
+    <p class="sub">Sign in with your Discord account to manage servers where you're an admin.</p>
+
+    <div id="error-alert" class="alert hidden"></div>
+
+    <a class="btn btn-primary discord-btn" href="/auth/login">
+      Continue with Discord
+    </a>
+
+    <p class="fine-print">
+      Sentinel-X never sees your Discord password. Access is granted only
+      through Discord's official login, and you can revoke it anytime from
+      your Discord authorized-apps settings.
+    </p>
+  </div>
+</div>
+
+<script>
+  // Surface OAuth errors passed back via ?error=
+  const params = new URLSearchParams(window.location.search);
+  const error = params.get('error');
+  if (error) {
+    const messages = {
+      access_denied: 'You cancelled the Discord authorization.',
+      invalid_state: 'Your login session expired. Please try again.',
+      oauth_failed: 'Something went wrong talking to Discord. Please try again.',
+    };
+    const alertBox = document.getElementById('error-alert');
+    alertBox.textContent = messages[error] || 'Login failed. Please try again.';
+    alertBox.classList.remove('hidden');
+  }
+
+  // If already logged in, skip straight to the guild picker.
+  fetch('/api/session', { cache: 'no-store' })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.authenticated) {
+        window.location.href = '/guilds.html';
+      }
+    })
+    .catch(() => {});
+</script>
+
+</body>
+</html>
