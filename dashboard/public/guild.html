@@ -18,14 +18,13 @@
     text-decoration: none;
     margin-bottom: 20px;
   }
-
   .back-link:hover { color: var(--text); }
 
   .guild-heading {
     display: flex;
     align-items: center;
     gap: 14px;
-    margin-bottom: 32px;
+    margin-bottom: 28px;
   }
 
   .guild-icon-lg {
@@ -43,26 +42,125 @@
     color: var(--text-muted);
   }
 
-  .guild-heading h1 {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 20px;
-    margin: 0;
+  .guild-heading h1 { font-family: 'Space Grotesk', sans-serif; font-size: 20px; margin: 0; }
+
+  /* ---------- Tabs ---------- */
+
+  .tab-nav {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+    overflow-x: auto;
   }
 
-  .save-bar {
+  .tab-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 10px 16px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ---------- Overview stat cards ---------- */
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+
+  .stat-card { text-align: center; }
+  .stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 600; margin: 0 0 4px; }
+  .stat-label { font-size: 12px; color: var(--text-muted); }
+
+  /* ---------- Threshold / settings forms ---------- */
+
+  .module-block { padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .module-block:last-child { border-bottom: none; }
+  .module-block h4 { margin: 0 0 12px; font-size: 14px; font-weight: 600; }
+
+  .field-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
-    margin-top: 24px;
+    padding: 6px 0;
+    font-size: 13px;
   }
 
-  #save-status {
+  .field-row label { color: var(--text-muted); }
+
+  .field-row input[type="number"], .field-row select {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    width: 140px;
+  }
+
+  select { background: var(--surface-raised); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+
+  /* ---------- Role chip picker ---------- */
+
+  .role-chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .role-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-raised);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .role-chip input { display: none; }
+  .role-chip.selected { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+
+  /* ---------- Log category row ---------- */
+
+  .log-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .log-row:last-child { border-bottom: none; }
+  .log-row .label { font-size: 14px; min-width: 140px; }
+
+  .save-bar { display: flex; align-items: center; gap: 12px; margin-top: 20px; }
+  #save-status { font-size: 13px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+
+  .placeholder-note {
     font-size: 13px;
     color: var(--text-muted);
-    font-family: 'JetBrains Mono', monospace;
+    padding: 24px;
+    text-align: center;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
   }
-
-  .panel + .panel { margin-top: 20px; }
 </style>
 </head>
 <body>
@@ -72,17 +170,12 @@
   <header class="topbar">
     <div class="brand">
       <div class="brand-mark">SX</div>
-      <div class="brand-text">
-        <h1>Sentinel-X</h1>
-        <p>Server settings</p>
-      </div>
+      <div class="brand-text"><h1>Sentinel-X</h1><p>Server settings</p></div>
     </div>
     <div class="session-box">
       <img class="avatar" id="user-avatar" alt="">
       <span id="user-name">—</span>
-      <form action="/auth/logout" method="POST">
-        <button class="btn btn-ghost" type="submit">Log out</button>
-      </form>
+      <form action="/auth/logout" method="POST"><button class="btn btn-ghost" type="submit">Log out</button></form>
     </div>
   </header>
 
@@ -96,40 +189,135 @@
       <h1 id="guild-name">Server</h1>
     </div>
 
-    <p class="section-label">Commands</p>
-    <div class="panel" id="commands-panel"></div>
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="security">Security</button>
+      <button class="tab-btn" data-tab="moderation">Moderation</button>
+      <button class="tab-btn" data-tab="logging">Logging</button>
+      <button class="tab-btn" data-tab="commands">Commands</button>
+    </nav>
 
-    <p class="section-label" style="margin-top:28px;">Security modules</p>
-    <div class="panel" id="security-panel"></div>
+    <!-- OVERVIEW -->
+    <section class="tab-panel active" id="panel-overview">
+      <div class="stat-grid">
+        <div class="card stat-card"><p class="stat-value" id="stat-security">—</p><p class="stat-label">Security modules on</p></div>
+        <div class="card stat-card"><p class="stat-value" id="stat-logging">—</p><p class="stat-label">Log channels set</p></div>
+        <div class="card stat-card"><p class="stat-value" id="stat-commands">—</p><p class="stat-label">Commands enabled</p></div>
+        <div class="card stat-card"><p class="stat-value" id="stat-roles">—</p><p class="stat-label">Trusted roles</p></div>
+      </div>
+      <p class="section-label" style="margin-top:24px;">Last updated</p>
+      <div class="panel"><div class="panel-row"><span class="k">Config last saved</span><span class="v" id="stat-updated">—</span></div></div>
+    </section>
 
-    <div class="save-bar">
-      <button class="btn btn-primary" id="save-btn">Save changes</button>
-      <span id="save-status"></span>
-    </div>
+    <!-- SECURITY -->
+    <section class="tab-panel" id="panel-security">
+      <p class="section-label">Security modules</p>
+      <div class="panel" id="security-toggles"></div>
+      <div class="save-bar">
+        <button class="btn btn-primary" data-save="security">Save security settings</button>
+        <span class="save-status" data-status="security"></span>
+      </div>
+    </section>
+
+    <!-- MODERATION -->
+    <section class="tab-panel" id="panel-moderation">
+      <p class="section-label">Trusted roles</p>
+      <p style="font-size:13px; color:var(--text-muted); margin-top:-8px;">Members with these roles are exempt from automated punishment.</p>
+      <div class="panel" id="roles-picker"></div>
+
+      <p class="section-label" style="margin-top:28px;">Thresholds</p>
+      <div class="panel" id="thresholds-panel"></div>
+
+      <p class="section-label" style="margin-top:28px;">Punishments</p>
+      <div class="panel" id="punishments-panel"></div>
+
+      <div class="save-bar">
+        <button class="btn btn-primary" data-save="moderation">Save moderation settings</button>
+        <span class="save-status" data-status="moderation"></span>
+      </div>
+    </section>
+
+    <!-- LOGGING -->
+    <section class="tab-panel" id="panel-logging">
+      <p class="section-label">Log categories &amp; channels</p>
+      <div class="panel" id="logging-panel"></div>
+      <div class="save-bar">
+        <button class="btn btn-primary" data-save="logging">Save logging settings</button>
+        <span class="save-status" data-status="logging"></span>
+      </div>
+
+      <p class="section-label" style="margin-top:28px;">Recent logs</p>
+      <div class="placeholder-note">
+        Live log history isn't wired up yet — this will show recent security/moderation
+        events here once the logging modules persist events for the dashboard to read.
+      </div>
+    </section>
+
+    <!-- COMMANDS -->
+    <section class="tab-panel" id="panel-commands">
+      <p class="section-label">Command categories</p>
+      <div class="panel" id="command-categories-panel"></div>
+
+      <p class="section-label" style="margin-top:28px;">Individual commands</p>
+      <div class="panel" id="command-individual-panel"></div>
+
+      <p class="section-label" style="margin-top:28px;">Command settings</p>
+      <div class="panel" id="command-settings-panel"></div>
+
+      <div class="save-bar">
+        <button class="btn btn-primary" data-save="commands">Save command settings</button>
+        <span class="save-status" data-status="commands"></span>
+      </div>
+    </section>
   </div>
 
   <footer class="page-footer">Sentinel-X Dashboard · foundation build</footer>
-
 </div>
 
 <script>
-  const COMMAND_LABELS = {
-    ban: { label: 'Ban', hint: 'Removes a member from the server permanently' },
-    kick: { label: 'Kick', hint: 'Removes a member; they can rejoin with an invite' },
-    mute: { label: 'Mute', hint: 'Temporarily restricts a member from sending messages' },
-    purge: { label: 'Purge', hint: 'Bulk-deletes recent messages in a channel' },
-    warn: { label: 'Warn', hint: 'Issues a logged warning to a member' },
+  const SECURITY_LABELS = {
+    antiSpam:      { label: 'Anti-Spam',       hint: 'Detects and blocks message flooding' },
+    antiLink:      { label: 'Anti-Link',       hint: 'Removes suspicious/unapproved links' },
+    antiInvite:    { label: 'Anti-Invite',     hint: 'Blocks non-whitelisted Discord invites' },
+    antiMention:   { label: 'Anti-Mention',    hint: 'Blocks mass mentions and @everyone/@here abuse' },
+    antiCaps:      { label: 'Anti-Caps',       hint: 'Flags excessive uppercase messages' },
+    antiEmojiSpam: { label: 'Anti-Emoji Spam', hint: 'Limits excessive emoji use' },
+    antiRaid:      { label: 'Anti-Raid',       hint: 'Detects mass joins and triggers lockdown' },
+    antiNuke:      { label: 'Anti-Nuke',       hint: 'Watches for mass channel/role destruction' },
+    antiWebhook:   { label: 'Anti-Webhook',    hint: 'Detects webhook creation abuse' },
   };
 
-  const SECURITY_LABELS = {
-    antiSpam: { label: 'Anti-Spam', hint: 'Detects and blocks message flooding' },
-    antiLink: { label: 'Anti-Link', hint: 'Removes suspicious/unapproved links' },
+  // Prefill values only - the bot's config/defaults.js remains the actual
+  // source of truth for enforcement. If these drift apart, worst case is a
+  // stale prefilled number in the form, not a functional bug.
+  const THRESHOLD_FIELDS = {
+    antiSpam:      [{ key: 'maxMessages', label: 'Max messages', default: 5 }, { key: 'timeWindowMs', label: 'Time window (ms)', default: 5000 }],
+    antiMention:   [{ key: 'maxMentionsPerMessage', label: 'Max mentions / message', default: 5 }],
+    antiCaps:      [{ key: 'minLength', label: 'Minimum message length', default: 10 }, { key: 'maxUppercasePercent', label: 'Max uppercase %', default: 70 }],
+    antiEmojiSpam: [{ key: 'maxEmojis', label: 'Max emojis / message', default: 8 }],
+    antiRaid:      [{ key: 'joinThreshold', label: 'Join threshold', default: 10 }, { key: 'timeWindowMs', label: 'Time window (ms)', default: 30000 }, { key: 'lockdownDurationMs', label: 'Lockdown duration (ms)', default: 600000 }],
+    antiNuke:      [{ key: 'maxChannelDeletes', label: 'Max channel deletes', default: 3 }, { key: 'maxChannelCreates', label: 'Max channel creates', default: 5 }, { key: 'maxRoleDeletes', label: 'Max role deletes', default: 3 }, { key: 'maxRoleCreates', label: 'Max role creates', default: 5 }],
+    antiWebhook:   [{ key: 'maxWebhookCreates', label: 'Max webhook creates', default: 3 }],
   };
+
+  const LOG_CATEGORY_LABELS = {
+    messageLogs:    'Message Logs',
+    memberLogs:     'Member Logs',
+    moderationLogs: 'Moderation Logs',
+    serverLogs:     'Server Logs',
+    securityLogs:   'Security Logs',
+    auditLogs:      'Audit Logs',
+  };
+
+  const COMMAND_CATEGORY_LABELS = { moderation: 'Moderation', utility: 'Utility', security: 'Security' };
+  const INDIVIDUAL_COMMAND_LABELS = { ban: 'Ban', kick: 'Kick', mute: 'Mute', purge: 'Purge', warn: 'Warn' };
 
   const params = new URLSearchParams(window.location.search);
   const guildId = params.get('guild');
 
   let currentConfig = null;
+  let guildRoles = [];
+  let guildChannels = [];
 
   function showError(message) {
     const el = document.getElementById('error-alert');
@@ -137,114 +325,311 @@
     el.classList.remove('hidden');
   }
 
-  function renderToggles(containerId, labels, values) {
-    const container = document.getElementById(containerId);
-    container.innerHTML = Object.keys(labels).map((key) => {
-      const meta = labels[key];
-      const checked = !!values[key];
-      return `
-        <div class="toggle-row">
-          <div>
-            <div class="label">${meta.label}</div>
-            <div class="hint">${meta.hint}</div>
-          </div>
-          <label class="switch">
-            <input type="checkbox" data-key="${key}" ${checked ? 'checked' : ''}>
-            <span class="track"></span>
-          </label>
-        </div>
-      `;
-    }).join('');
-  }
+  // ---------- Tabs ----------
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    });
+  });
 
+  // ---------- Session ----------
   async function loadSession() {
     const res = await fetch('/api/session', { cache: 'no-store' });
     const data = await res.json();
-    if (!data.authenticated) {
-      window.location.href = '/login.html';
-      return;
-    }
+    if (!data.authenticated) { window.location.href = '/login.html'; return; }
     const user = data.user;
     document.getElementById('user-name').textContent = user.globalName || user.username;
     const avatarEl = document.getElementById('user-avatar');
-    if (user.avatar) {
-      avatarEl.src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`;
-    } else {
-      avatarEl.style.display = 'none';
-    }
+    if (user.avatar) avatarEl.src = `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`;
+    else avatarEl.style.display = 'none';
   }
 
-  async function loadConfig() {
-    if (!guildId) {
-      showError('No server selected.');
+  // ---------- Render: Security ----------
+  function renderSecurityTab() {
+    const container = document.getElementById('security-toggles');
+    container.innerHTML = Object.keys(SECURITY_LABELS).map((key) => {
+      const meta = SECURITY_LABELS[key];
+      const checked = !!currentConfig.security[key];
+      return `
+        <div class="toggle-row">
+          <div><div class="label">${meta.label}</div><div class="hint">${meta.hint}</div></div>
+          <label class="switch"><input type="checkbox" data-security-key="${key}" ${checked ? 'checked' : ''}><span class="track"></span></label>
+        </div>`;
+    }).join('');
+  }
+
+  // ---------- Render: Moderation ----------
+  function renderRolesPicker() {
+    const container = document.getElementById('roles-picker');
+    const selected = new Set(currentConfig.moderation.trustedRoles || []);
+
+    if (guildRoles.length === 0) {
+      container.innerHTML = '<p style="font-size:13px;color:var(--text-muted);margin:0;">No assignable roles found in this server.</p>';
       return;
     }
 
-    const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/config`, { cache: 'no-store' });
+    container.innerHTML = `<div class="role-chip-grid">${guildRoles.map((role) => `
+      <label class="role-chip ${selected.has(role.id) ? 'selected' : ''}" data-role-chip="${role.id}">
+        <input type="checkbox" data-role-id="${role.id}" ${selected.has(role.id) ? 'checked' : ''}>
+        ${role.name}
+      </label>`).join('')}</div>`;
 
-    if (res.status === 401) {
-      window.location.href = '/login.html';
-      return;
-    }
-    if (res.status === 403) {
-      showError('You do not have access to manage this server.');
-      return;
-    }
-    if (!res.ok) {
-      showError('Failed to load server configuration.');
-      return;
-    }
+    container.querySelectorAll('[data-role-chip]').forEach((chip) => {
+      chip.addEventListener('click', (e) => {
+        e.preventDefault();
+        const input = chip.querySelector('input');
+        input.checked = !input.checked;
+        chip.classList.toggle('selected', input.checked);
+      });
+    });
+  }
 
-    currentConfig = await res.json();
+  function renderThresholds() {
+    const container = document.getElementById('thresholds-panel');
+    const stored = currentConfig.moderation.thresholds || {};
+
+    container.innerHTML = Object.keys(THRESHOLD_FIELDS).map((moduleKey) => {
+      const fields = THRESHOLD_FIELDS[moduleKey];
+      const moduleLabel = SECURITY_LABELS[moduleKey]?.label || moduleKey;
+      const moduleStored = stored[moduleKey] || {};
+
+      return `
+        <div class="module-block">
+          <h4>${moduleLabel}</h4>
+          ${fields.map((f) => {
+            const value = moduleStored[f.key] !== undefined ? moduleStored[f.key] : f.default;
+            return `
+              <div class="field-row">
+                <label>${f.label}</label>
+                <input type="number" data-threshold-module="${moduleKey}" data-threshold-key="${f.key}" value="${value}">
+              </div>`;
+          }).join('')}
+        </div>`;
+    }).join('');
+  }
+
+  function renderPunishments() {
+    // Only Anti-Spam has real escalation logic today (see bot/security/antiSpam.js).
+    // Exposed as three timeout durations (minutes) mapped onto its escalation ladder.
+    const container = document.getElementById('punishments-panel');
+    const stored = (currentConfig.moderation.punishments || {}).antiSpam || {};
+    const ladder = stored.escalation;
+
+    const minutesOf = (idx, fallbackMinutes) => {
+      if (Array.isArray(ladder) && ladder[idx]) return Math.round(ladder[idx].durationMs / 60000);
+      return fallbackMinutes;
+    };
+
+    container.innerHTML = `
+      <div class="module-block">
+        <h4>Anti-Spam escalation</h4>
+        <div class="field-row"><label>2nd offense timeout (minutes)</label><input type="number" id="punish-rung-2" value="${minutesOf(1, 1)}"></div>
+        <div class="field-row"><label>3rd offense timeout (minutes)</label><input type="number" id="punish-rung-3" value="${minutesOf(2, 5)}"></div>
+        <div class="field-row"><label>4th+ offense timeout (minutes)</label><input type="number" id="punish-rung-4" value="${minutesOf(3, 60)}"></div>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:12px 0 0;">
+        Other modules don't have automated punishment logic yet - their escalation
+        settings will appear here once that's built.
+      </p>`;
+  }
+
+  // ---------- Render: Logging ----------
+  function renderLoggingTab() {
+    const container = document.getElementById('logging-panel');
+    const enabled = currentConfig.logging.enabledCategories || {};
+    const channels = currentConfig.logging.channels || {};
+
+    const channelOptions = (selectedId) => `
+      <option value="">— No channel —</option>
+      ${guildChannels.map((ch) => `<option value="${ch.id}" ${ch.id === selectedId ? 'selected' : ''}>#${ch.name}</option>`).join('')}
+    `;
+
+    container.innerHTML = Object.keys(LOG_CATEGORY_LABELS).map((key) => `
+      <div class="log-row">
+        <span class="label">${LOG_CATEGORY_LABELS[key]}</span>
+        <label class="switch"><input type="checkbox" data-log-enabled="${key}" ${enabled[key] ? 'checked' : ''}><span class="track"></span></label>
+        <select data-log-channel="${key}">${channelOptions(channels[key])}</select>
+      </div>`).join('');
+  }
+
+  // ---------- Render: Commands ----------
+  function renderCommandsTab() {
+    const catContainer = document.getElementById('command-categories-panel');
+    const cats = currentConfig.commands.categories || {};
+    catContainer.innerHTML = Object.keys(COMMAND_CATEGORY_LABELS).map((key) => `
+      <div class="toggle-row">
+        <div class="label">${COMMAND_CATEGORY_LABELS[key]}</div>
+        <label class="switch"><input type="checkbox" data-cat-key="${key}" ${cats[key] ? 'checked' : ''}><span class="track"></span></label>
+      </div>`).join('');
+
+    const indContainer = document.getElementById('command-individual-panel');
+    const individual = currentConfig.commands.individual || {};
+    indContainer.innerHTML = Object.keys(INDIVIDUAL_COMMAND_LABELS).map((key) => `
+      <div class="toggle-row">
+        <div class="label">${INDIVIDUAL_COMMAND_LABELS[key]}</div>
+        <label class="switch"><input type="checkbox" data-ind-key="${key}" ${individual[key] ? 'checked' : ''}><span class="track"></span></label>
+      </div>`).join('');
+
+    const settingsContainer = document.getElementById('command-settings-panel');
+    const purgeMax = currentConfig.commands.settings?.purge?.maxAmount ?? 100;
+    settingsContainer.innerHTML = `
+      <div class="field-row"><label>Purge - max messages per use</label><input type="number" id="setting-purge-max" value="${purgeMax}"></div>`;
+  }
+
+  // ---------- Overview ----------
+  function renderOverview() {
+    const securityOnCount = Object.values(currentConfig.security).filter(Boolean).length;
+    const securityTotal = Object.keys(currentConfig.security).length;
+    const channelsSetCount = Object.values(currentConfig.logging.channels).filter(Boolean).length;
+    const channelsTotal = Object.keys(currentConfig.logging.channels).length;
+    const commandsOnCount = Object.values(currentConfig.commands.individual).filter(Boolean).length;
+    const commandsTotal = Object.keys(currentConfig.commands.individual).length;
+
+    document.getElementById('stat-security').textContent = `${securityOnCount}/${securityTotal}`;
+    document.getElementById('stat-logging').textContent = `${channelsSetCount}/${channelsTotal}`;
+    document.getElementById('stat-commands').textContent = `${commandsOnCount}/${commandsTotal}`;
+    document.getElementById('stat-roles').textContent = (currentConfig.moderation.trustedRoles || []).length;
+    document.getElementById('stat-updated').textContent = currentConfig.updatedAt
+      ? new Date(currentConfig.updatedAt).toLocaleString()
+      : 'Never saved - using defaults';
+  }
+
+  function renderAll() {
     document.getElementById('guild-name').textContent = currentConfig.guildName || guildId;
-    renderToggles('commands-panel', COMMAND_LABELS, currentConfig.commands);
-    renderToggles('security-panel', SECURITY_LABELS, currentConfig.securityModules);
+    renderOverview();
+    renderSecurityTab();
+    renderRolesPicker();
+    renderThresholds();
+    renderPunishments();
+    renderLoggingTab();
+    renderCommandsTab();
     document.getElementById('content').style.display = 'block';
   }
 
-  function collectToggleValues(containerId) {
-    const container = document.getElementById(containerId);
-    const values = {};
-    container.querySelectorAll('input[type="checkbox"]').forEach((input) => {
-      values[input.dataset.key] = input.checked;
-    });
-    return values;
+  // ---------- Load ----------
+  async function loadData() {
+    if (!guildId) { showError('No server selected.'); return; }
+
+    const [configRes, metaRes] = await Promise.all([
+      fetch(`/api/guilds/${encodeURIComponent(guildId)}/config`, { cache: 'no-store' }),
+      fetch(`/api/guilds/${encodeURIComponent(guildId)}/meta`, { cache: 'no-store' }),
+    ]);
+
+    if (configRes.status === 401) { window.location.href = '/login.html'; return; }
+    if (configRes.status === 403) { showError('You do not have access to manage this server.'); return; }
+    if (!configRes.ok) { showError('Failed to load server configuration.'); return; }
+
+    currentConfig = await configRes.json();
+
+    if (metaRes.ok) {
+      const meta = await metaRes.json();
+      guildChannels = meta.channels || [];
+      guildRoles = meta.roles || [];
+    } else {
+      console.warn('Sentinel-X: failed to load guild metadata (channels/roles)');
+    }
+
+    renderAll();
   }
 
-  async function saveConfig() {
-    const statusEl = document.getElementById('save-status');
-    const btn = document.getElementById('save-btn');
+  // ---------- Save handlers ----------
+  async function saveSection(section, payload) {
+    const statusEl = document.querySelector(`[data-status="${section}"]`);
+    const btn = document.querySelector(`[data-save="${section}"]`);
     btn.disabled = true;
     statusEl.textContent = 'Saving…';
 
-    const payload = {
-      commands: collectToggleValues('commands-panel'),
-      securityModules: collectToggleValues('security-panel'),
-    };
-
     try {
-      const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/config`, {
-        method: 'POST',
+      const res = await fetch(`/api/guilds/${encodeURIComponent(guildId)}/${section}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error('Save failed');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Save failed');
+      }
 
       currentConfig = await res.json();
       statusEl.textContent = 'Saved ' + new Date(currentConfig.updatedAt).toLocaleTimeString();
+      renderOverview();
     } catch (err) {
-      statusEl.textContent = 'Failed to save changes.';
+      statusEl.textContent = err.message || 'Failed to save changes.';
     } finally {
       btn.disabled = false;
     }
   }
 
-  document.getElementById('save-btn').addEventListener('click', saveConfig);
+  document.querySelector('[data-save="security"]').addEventListener('click', () => {
+    const patch = {};
+    document.querySelectorAll('[data-security-key]').forEach((input) => {
+      patch[input.dataset.securityKey] = input.checked;
+    });
+    saveSection('security', patch);
+  });
+
+  document.querySelector('[data-save="moderation"]').addEventListener('click', () => {
+    const trustedRoles = [];
+    document.querySelectorAll('[data-role-id]:checked').forEach((input) => trustedRoles.push(input.dataset.roleId));
+
+    const thresholds = {};
+    document.querySelectorAll('[data-threshold-module]').forEach((input) => {
+      const moduleKey = input.dataset.thresholdModule;
+      const fieldKey = input.dataset.thresholdKey;
+      thresholds[moduleKey] = thresholds[moduleKey] || {};
+      thresholds[moduleKey][fieldKey] = Number(input.value);
+    });
+
+    const rung2 = Number(document.getElementById('punish-rung-2').value) * 60000;
+    const rung3 = Number(document.getElementById('punish-rung-3').value) * 60000;
+    const rung4 = Number(document.getElementById('punish-rung-4').value) * 60000;
+
+    const punishments = {
+      antiSpam: {
+        escalation: [
+          { offenseCount: 1, action: 'warn', durationMs: 0 },
+          { offenseCount: 2, action: 'timeout', durationMs: rung2 },
+          { offenseCount: 3, action: 'timeout', durationMs: rung3 },
+          { offenseCount: 4, action: 'timeout', durationMs: rung4 },
+        ],
+      },
+    };
+
+    saveSection('moderation', { trustedRoles, thresholds, punishments });
+  });
+
+  document.querySelector('[data-save="logging"]').addEventListener('click', () => {
+    const enabledCategories = {};
+    const channels = {};
+    document.querySelectorAll('[data-log-enabled]').forEach((input) => {
+      enabledCategories[input.dataset.logEnabled] = input.checked;
+    });
+    document.querySelectorAll('[data-log-channel]').forEach((select) => {
+      channels[select.dataset.logChannel] = select.value || null;
+    });
+    saveSection('logging', { enabledCategories, channels });
+  });
+
+  document.querySelector('[data-save="commands"]').addEventListener('click', () => {
+    const categories = {};
+    document.querySelectorAll('[data-cat-key]').forEach((input) => { categories[input.dataset.catKey] = input.checked; });
+
+    const individual = {};
+    document.querySelectorAll('[data-ind-key]').forEach((input) => { individual[input.dataset.indKey] = input.checked; });
+
+    const settings = { purge: { maxAmount: Number(document.getElementById('setting-purge-max').value) } };
+
+    saveSection('commands', { categories, individual, settings });
+  });
 
   loadSession();
-  loadConfig();
+  loadData();
 </script>
 
 </body>
 </html>
+p
