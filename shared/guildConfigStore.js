@@ -62,6 +62,21 @@ const DEFAULT_INDIVIDUAL_COMMANDS = {
     warn: true,
 };
 
+// Trust score weights are intentionally fully configurable per guild - this
+// is only the shipped default, read by shared/identity/trustScoreEngine.js.
+// That engine never hardcodes a number itself; every weight below is a
+// value it's told to use, not a constant baked into scoring logic.
+const DEFAULT_IDENTITY_WEIGHTS = {
+    minScore: 0,
+    maxScore: 100,
+    baseScore: 50,
+    discordAccountAge: { pointsPerDay: 0.05, maxPoints: 15 },
+    robloxAccountAge: { pointsPerDay: 0.05, maxPoints: 15 },
+    verifiedProviders: { pointsPerProvider: 8, maxPoints: 16 },
+    serverTenure: { pointsPerDay: 0.1, maxPoints: 20 },
+    moderationHistory: { pointsPerIncident: -5, maxPenalty: -30 },
+};
+
 function defaultSecurityToggles() {
     return SECURITY_MODULES.reduce((acc, key) => {
         acc[key] = DEFAULT_CONFIG[key]?.enabled ?? true;
@@ -101,6 +116,11 @@ function buildDefaultGuildConfig(guildId, guildName) {
             categories: { ...DEFAULT_COMMAND_CATEGORIES },
             individual: { ...DEFAULT_INDIVIDUAL_COMMANDS },
             settings: {}, // arbitrary per-command config, e.g. { purge: { maxAmount: 100 } }
+        },
+        identity: {
+            requiredProviders: [], // e.g. ['roblox'] to require Roblox verification for access
+            trustScoreWeights: { ...DEFAULT_IDENTITY_WEIGHTS },
+            roleSyncRules: [], // future: [{ provider: 'roblox', groupId, rank, roleId }]
         },
         updatedAt: null,
     };
@@ -166,5 +186,5 @@ module.exports = {
     saveGuildConfig,
     SECURITY_MODULES,
     LOG_CATEGORIES,
+    DEFAULT_IDENTITY_WEIGHTS,
 };
-
