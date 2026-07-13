@@ -25,6 +25,7 @@ const { requireAuth } = require('./middleware/auth');
 const authRoutes = require('./routes/auth');
 const guildRoutes = require('./routes/guilds');
 const configRoutes = require('./routes/config');
+const guildMetaRoutes = require('./routes/guildMeta');
 
 const app = express();
 const startedAt = Date.now();
@@ -63,6 +64,7 @@ app.use(
 app.use('/auth', authRoutes);
 app.use('/api', guildRoutes);
 app.use('/api', configRoutes);
+app.use('/api', guildMetaRoutes);
 
 app.get('/api/status', (req, res) => {
     try {
@@ -138,3 +140,4 @@ process.on('unhandledRejection', (error) => {
 process.on('uncaughtException', (error) => {
     console.error('[Sentinel-X Dashboard] Uncaught exception:', error);
 });
+
