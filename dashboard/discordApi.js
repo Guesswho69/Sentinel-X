@@ -141,6 +141,43 @@ function hasManageAccess(guild) {
     }
 }
 
+/**
+ * Fetches a guild's channels using the bot's own token. Used to populate
+ * log-channel dropdowns with real channels instead of asking admins to
+ * paste raw channel IDs.
+ * @param {string} guildId
+ * @returns {Promise<Array<{id: string, name: string, type: number}>>}
+ */
+async function fetchGuildChannels(guildId) {
+    const response = await fetch(`${API_BASE}/guilds/${guildId}/channels`, {
+        headers: { Authorization: `Bot ${config.discord.botToken}` },
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch guild channels (${response.status})`);
+    }
+
+    return response.json();
+}
+
+/**
+ * Fetches a guild's roles using the bot's own token. Used to populate the
+ * trusted-roles picker on the Moderation page.
+ * @param {string} guildId
+ * @returns {Promise<Array<{id: string, name: string, color: number, position: number}>>}
+ */
+async function fetchGuildRoles(guildId) {
+    const response = await fetch(`${API_BASE}/guilds/${guildId}/roles`, {
+        headers: { Authorization: `Bot ${config.discord.botToken}` },
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch guild roles (${response.status})`);
+    }
+
+    return response.json();
+}
+
 module.exports = {
     buildAuthorizeUrl,
     exchangeCode,
@@ -148,4 +185,6 @@ module.exports = {
     fetchUserGuilds,
     fetchBotGuildIds,
     hasManageAccess,
+    fetchGuildChannels,
+    fetchGuildRoles,
 };
