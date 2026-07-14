@@ -28,6 +28,7 @@ const client = new Client({
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildModeration,
+        GatewayIntentBits.GuildWebhooks,
     ],
     partials: [Partials.Message, Partials.Channel],
 });
@@ -60,4 +61,3 @@ client.login(TOKEN).catch((error) => {
     logger.logError('Failed to log in to Discord. Check that DISCORD_TOKEN is valid.', error);
     process.exit(1);
 });
-
