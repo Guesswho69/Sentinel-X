@@ -8,13 +8,26 @@
  */
 
 const messageCreate = require('./messageCreate');
+const guildMemberAdd = require('./guildMemberAdd');
+const channelCreate = require('./channelCreate');
+const channelDelete = require('./channelDelete');
+const roleCreate = require('./roleCreate');
+const roleDelete = require('./roleDelete');
+const roleUpdate = require('./roleUpdate');
+const webhooksUpdate = require('./webhooksUpdate');
 
 /**
  * @param {import('discord.js').Client} client
  */
 function registerEvents(client) {
     client.on('messageCreate', messageCreate);
+    client.on('guildMemberAdd', guildMemberAdd);
+    client.on('channelCreate', channelCreate);
+    client.on('channelDelete', channelDelete);
+    client.on('roleCreate', roleCreate);
+    client.on('roleDelete', roleDelete);
+    client.on('roleUpdate', roleUpdate);
+    client.on('webhooksUpdate', webhooksUpdate);
 }
 
 module.exports = registerEvents;
-
