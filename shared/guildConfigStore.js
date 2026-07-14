@@ -56,7 +56,7 @@ const LOG_CATEGORIES = [
 // UI and the bot's action-gating both read from here, so adding a new
 // action to a module means editing one entry, not hunting through code.
 const SECURITY_ACTIONS = {
-    antiSpam:      { delete: true, warn: true, timeout: true },
+    antiSpam:      { delete: true, warn: true, timeout: true, purge: true },
     antiLink:      { delete: true, warn: true },
     antiInvite:    { delete: true, warn: true },
     antiMention:   { delete: true, warn: true, timeout: true },
