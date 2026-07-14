@@ -43,6 +43,46 @@
   }
 
   .guild-heading h1 { font-family: 'Space Grotesk', sans-serif; font-size: 20px; margin: 0; }
+  .guild-id { font-size: 12px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; margin-top: 3px; }
+
+  /* ---------- Setup checklist (Overview tab) ---------- */
+
+  .checklist-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .checklist-row:last-child { border-bottom: none; }
+
+  .checklist-left { display: flex; align-items: center; gap: 12px; }
+
+  .checklist-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .checklist-dot.good { background: var(--good); }
+  .checklist-dot.warn { background: var(--warn); }
+
+  .checklist-title { font-size: 14px; }
+  .checklist-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  .checklist-action {
+    font-size: 12.5px;
+    color: var(--accent);
+    background: none;
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    padding: 4px 0;
+  }
+  .checklist-action:hover { text-decoration: underline; }
 
   /* ---------- Tabs ---------- */
 
@@ -85,6 +125,52 @@
   .stat-card { text-align: center; }
   .stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 600; margin: 0 0 4px; }
   .stat-label { font-size: 12px; color: var(--text-muted); }
+
+  /* ---------- Security module cards ---------- */
+
+  .module-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    margin-bottom: 14px;
+    overflow: hidden;
+    transition: opacity 0.2s ease;
+  }
+
+  .module-card.disabled { opacity: 0.55; }
+
+  .module-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    gap: 12px;
+  }
+
+  .module-title { font-size: 14.5px; font-weight: 600; }
+  .module-hint { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+
+  .module-actions {
+    border-top: 1px solid var(--border);
+    background: var(--surface-raised);
+    padding: 2px 18px;
+  }
+
+  .action-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .action-row:last-child { border-bottom: none; }
+  .action-row .action-label { color: var(--text-muted); }
+
+  .switch-sm { width: 34px; height: 20px; }
+  .switch-sm .track::before { width: 14px; height: 14px; left: 3px; top: 3px; }
+  .switch-sm input:checked + .track::before { transform: translateX(14px); }
 
   /* ---------- Threshold / settings forms ---------- */
 
@@ -186,7 +272,10 @@
   <div id="content" style="display:none;">
     <div class="guild-heading">
       <div class="guild-icon-lg" id="guild-icon">SX</div>
-      <h1 id="guild-name">Server</h1>
+      <div>
+        <h1 id="guild-name">Server</h1>
+        <div class="guild-id" id="guild-id-line">Server ID: —</div>
+      </div>
     </div>
 
     <nav class="tab-nav">
@@ -205,6 +294,9 @@
         <div class="card stat-card"><p class="stat-value" id="stat-commands">—</p><p class="stat-label">Commands enabled</p></div>
         <div class="card stat-card"><p class="stat-value" id="stat-roles">—</p><p class="stat-label">Trusted roles</p></div>
       </div>
+      <p class="section-label" style="margin-top:24px;">Setup checklist</p>
+      <div class="panel" id="setup-checklist"></div>
+
       <p class="section-label" style="margin-top:24px;">Last updated</p>
       <div class="panel"><div class="panel-row"><span class="k">Config last saved</span><span class="v" id="stat-updated">—</span></div></div>
     </section>
@@ -287,6 +379,22 @@
     antiWebhook:   { label: 'Anti-Webhook',    hint: 'Detects webhook creation abuse' },
   };
 
+  // Friendly labels for individual automated actions. Which actions apply
+  // to which module comes from the server (currentConfig.security[module].actions) -
+  // this is just display text, not a second copy of "what actions exist".
+  const ACTION_LABELS = {
+    delete: 'Delete the violating message',
+    warn: 'Warn the user',
+    timeout: 'Timeout the user',
+    lockdown: 'Enable temporary server lockdown',
+    kickNewAccounts: 'Kick very new accounts during a raid',
+    stripRoles: "Strip the executor's dangerous roles",
+    timeoutExecutor: 'Timeout the executor',
+    banExecutor: 'Ban the executor',
+    deleteWebhook: 'Delete the webhook',
+    timeoutCreator: "Timeout the webhook's creator",
+  };
+
   // Prefill values only - the bot's config/defaults.js remains the actual
   // source of truth for enforcement. If these drift apart, worst case is a
   // stale prefilled number in the form, not a functional bug.
@@ -350,15 +458,48 @@
   // ---------- Render: Security ----------
   function renderSecurityTab() {
     const container = document.getElementById('security-toggles');
-    container.innerHTML = Object.keys(SECURITY_LABELS).map((key) => {
-      const meta = SECURITY_LABELS[key];
-      const checked = !!currentConfig.security[key];
+
+    container.innerHTML = Object.keys(SECURITY_LABELS).map((moduleKey) => {
+      const meta = SECURITY_LABELS[moduleKey];
+      const moduleConfig = currentConfig.security[moduleKey] || { enabled: true, actions: {} };
+      const actions = moduleConfig.actions || {};
+      const actionKeys = Object.keys(actions);
+
+      const actionsHtml = actionKeys.length > 0
+        ? actionKeys.map((actionKey) => `
+            <div class="action-row">
+              <span class="action-label">${ACTION_LABELS[actionKey] || actionKey}</span>
+              <label class="switch switch-sm">
+                <input type="checkbox" data-security-action="${moduleKey}:${actionKey}" ${actions[actionKey] ? 'checked' : ''}>
+                <span class="track"></span>
+              </label>
+            </div>`).join('')
+        : '<div class="action-row"><span class="action-label">No configurable actions for this module yet</span></div>';
+
       return `
-        <div class="toggle-row">
-          <div><div class="label">${meta.label}</div><div class="hint">${meta.hint}</div></div>
-          <label class="switch"><input type="checkbox" data-security-key="${key}" ${checked ? 'checked' : ''}><span class="track"></span></label>
+        <div class="module-card ${moduleConfig.enabled ? '' : 'disabled'}" data-module-card="${moduleKey}">
+          <div class="module-card-header">
+            <div>
+              <div class="module-title">${meta.label}</div>
+              <div class="module-hint">${meta.hint}</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" data-security-enabled="${moduleKey}" ${moduleConfig.enabled ? 'checked' : ''}>
+              <span class="track"></span>
+            </label>
+          </div>
+          <div class="module-actions">${actionsHtml}</div>
         </div>`;
     }).join('');
+
+    // Visually dim a module's actions when its master switch is off, so
+    // it's obvious those sub-toggles won't do anything right now.
+    container.querySelectorAll('[data-security-enabled]').forEach((input) => {
+      input.addEventListener('change', () => {
+        const card = container.querySelector(`[data-module-card="${input.dataset.securityEnabled}"]`);
+        card.classList.toggle('disabled', !input.checked);
+      });
+    });
   }
 
   // ---------- Render: Moderation ----------
@@ -480,25 +621,79 @@
   }
 
   // ---------- Overview ----------
+  function switchToTab(tabName) {
+    document.querySelector(`.tab-btn[data-tab="${tabName}"]`).click();
+  }
+
   function renderOverview() {
-    const securityOnCount = Object.values(currentConfig.security).filter(Boolean).length;
+    const securityOnCount = Object.values(currentConfig.security).filter((m) => m.enabled).length;
     const securityTotal = Object.keys(currentConfig.security).length;
     const channelsSetCount = Object.values(currentConfig.logging.channels).filter(Boolean).length;
     const channelsTotal = Object.keys(currentConfig.logging.channels).length;
     const commandsOnCount = Object.values(currentConfig.commands.individual).filter(Boolean).length;
     const commandsTotal = Object.keys(currentConfig.commands.individual).length;
+    const trustedRolesCount = (currentConfig.moderation.trustedRoles || []).length;
 
     document.getElementById('stat-security').textContent = `${securityOnCount}/${securityTotal}`;
     document.getElementById('stat-logging').textContent = `${channelsSetCount}/${channelsTotal}`;
     document.getElementById('stat-commands').textContent = `${commandsOnCount}/${commandsTotal}`;
-    document.getElementById('stat-roles').textContent = (currentConfig.moderation.trustedRoles || []).length;
+    document.getElementById('stat-roles').textContent = trustedRolesCount;
     document.getElementById('stat-updated').textContent = currentConfig.updatedAt
       ? new Date(currentConfig.updatedAt).toLocaleString()
       : 'Never saved - using defaults';
+
+    const items = [
+      {
+        title: 'Security modules',
+        good: securityOnCount > 0,
+        sub: `${securityOnCount}/${securityTotal} modules enabled`,
+        tab: 'security',
+      },
+      {
+        title: 'Log channels',
+        good: channelsSetCount === channelsTotal && channelsTotal > 0,
+        sub: channelsSetCount === channelsTotal
+          ? 'All log categories have a channel set'
+          : `${channelsSetCount}/${channelsTotal} categories have a channel set`,
+        tab: 'logging',
+      },
+      {
+        title: 'Trusted roles',
+        good: trustedRolesCount > 0,
+        sub: trustedRolesCount > 0
+          ? `${trustedRolesCount} role(s) exempted from automated punishment`
+          : 'None set - server admins/owner are still always exempt',
+        tab: 'moderation',
+      },
+      {
+        title: 'Commands',
+        good: commandsOnCount === commandsTotal,
+        sub: `${commandsOnCount}/${commandsTotal} commands enabled`,
+        tab: 'commands',
+      },
+    ];
+
+    const checklist = document.getElementById('setup-checklist');
+    checklist.innerHTML = items.map((item) => `
+      <div class="checklist-row">
+        <div class="checklist-left">
+          <span class="checklist-dot ${item.good ? 'good' : 'warn'}"></span>
+          <div>
+            <div class="checklist-title">${item.title}</div>
+            <div class="checklist-sub">${item.sub}</div>
+          </div>
+        </div>
+        <button class="checklist-action" data-jump-tab="${item.tab}">Configure &rarr;</button>
+      </div>`).join('');
+
+    checklist.querySelectorAll('[data-jump-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => switchToTab(btn.dataset.jumpTab));
+    });
   }
 
   function renderAll() {
     document.getElementById('guild-name').textContent = currentConfig.guildName || guildId;
+    document.getElementById('guild-id-line').textContent = `Server ID: ${guildId}`;
     renderOverview();
     renderSecurityTab();
     renderRolesPicker();
@@ -566,9 +761,20 @@
 
   document.querySelector('[data-save="security"]').addEventListener('click', () => {
     const patch = {};
-    document.querySelectorAll('[data-security-key]').forEach((input) => {
-      patch[input.dataset.securityKey] = input.checked;
+
+    document.querySelectorAll('[data-security-enabled]').forEach((input) => {
+      const moduleKey = input.dataset.securityEnabled;
+      patch[moduleKey] = patch[moduleKey] || {};
+      patch[moduleKey].enabled = input.checked;
     });
+
+    document.querySelectorAll('[data-security-action]').forEach((input) => {
+      const [moduleKey, actionKey] = input.dataset.securityAction.split(':');
+      patch[moduleKey] = patch[moduleKey] || {};
+      patch[moduleKey].actions = patch[moduleKey].actions || {};
+      patch[moduleKey].actions[actionKey] = input.checked;
+    });
+
     saveSection('security', patch);
   });
 
@@ -632,4 +838,3 @@
 
 </body>
 </html>
-p
