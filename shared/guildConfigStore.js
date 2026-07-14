@@ -7,7 +7,7 @@
  * bot's very next check reads that same change from disk.
  *
  * Schema is split into four sections, matching the dashboard pages:
- *   - security:   { [moduleName]: boolean }              - on/off per module
+ *   - security:   { [moduleName]: { enabled, actions: { [actionName]: boolean } } }
  *   - moderation: { trustedRoles, thresholds, punishments } - tuning
  *   - logging:    { enabledCategories, channels }          - per-category on/off + channel ID
  *   - commands:   { categories, individual, settings }      - command toggles
@@ -48,6 +48,25 @@ const LOG_CATEGORIES = [
     'auditLogs',
 ];
 
+// Which automated actions each security module can take, and their
+// shipped default (on/off). Destructive/high-impact actions (banning,
+// executing anti-nuke punishments) default OFF - everything else defaults
+// to match the module's existing behavior today. This is the one place
+// that defines "what actions exist per module" - the dashboard's toggle
+// UI and the bot's action-gating both read from here, so adding a new
+// action to a module means editing one entry, not hunting through code.
+const SECURITY_ACTIONS = {
+    antiSpam:      { delete: true, warn: true, timeout: true },
+    antiLink:      { delete: true, warn: true },
+    antiInvite:    { delete: true, warn: true },
+    antiMention:   { delete: true, warn: true, timeout: true },
+    antiCaps:      { delete: true, warn: true },
+    antiEmojiSpam: { delete: true, warn: true },
+    antiRaid:      { lockdown: true, kickNewAccounts: false },
+    antiNuke:      { stripRoles: false, timeoutExecutor: false, banExecutor: false },
+    antiWebhook:   { deleteWebhook: true, timeoutCreator: false },
+};
+
 const DEFAULT_COMMAND_CATEGORIES = {
     moderation: true,
     utility: true,
@@ -79,9 +98,35 @@ const DEFAULT_IDENTITY_WEIGHTS = {
 
 function defaultSecurityToggles() {
     return SECURITY_MODULES.reduce((acc, key) => {
-        acc[key] = DEFAULT_CONFIG[key]?.enabled ?? true;
+        acc[key] = {
+            enabled: DEFAULT_CONFIG[key]?.enabled ?? true,
+            actions: { ...(SECURITY_ACTIONS[key] || {}) },
+        };
         return acc;
     }, {});
+}
+
+/**
+ * Migrates a stored security section from the old flat-boolean shape
+ * ({ antiSpam: true }) to the current { antiSpam: { enabled, actions } }
+ * shape, so guilds configured before this change don't get their settings
+ * silently discarded or corrupted by a naive merge. New saves always
+ * write the current shape - this only runs on read, against old data.
+ * @param {Object} storedSecurity
+ */
+function migrateSecuritySection(storedSecurity) {
+    if (!storedSecurity || typeof storedSecurity !== 'object') return storedSecurity;
+
+    const migrated = {};
+    for (const [moduleName, value] of Object.entries(storedSecurity)) {
+        if (typeof value === 'boolean') {
+            // Old shape: just carry the enabled flag forward, actions stay default.
+            migrated[moduleName] = { enabled: value };
+        } else {
+            migrated[moduleName] = value;
+        }
+    }
+    return migrated;
 }
 
 function defaultLogCategories() {
@@ -162,7 +207,13 @@ function getGuildConfig(guildId, guildName) {
     const defaults = buildDefaultGuildConfig(guildId, guildName);
     const stored = store.get(guildId);
     if (!stored) return defaults;
-    return deepMerge(defaults, stored);
+
+    const migratedStored = {
+        ...stored,
+        security: migrateSecuritySection(stored.security),
+    };
+
+    return deepMerge(defaults, migratedStored);
 }
 
 /**
@@ -173,7 +224,10 @@ function getGuildConfig(guildId, guildName) {
  */
 function saveGuildConfig(guildId, guildName, patch = {}) {
     const current = getGuildConfig(guildId, guildName);
-    const merged = deepMerge(current, patch);
+    const normalizedPatch = patch.security
+        ? { ...patch, security: migrateSecuritySection(patch.security) }
+        : patch;
+    const merged = deepMerge(current, normalizedPatch);
     merged.guildId = guildId;
     merged.guildName = guildName || current.guildName || null;
     merged.updatedAt = new Date().toISOString();
@@ -185,6 +239,7 @@ module.exports = {
     getGuildConfig,
     saveGuildConfig,
     SECURITY_MODULES,
+    SECURITY_ACTIONS,
     LOG_CATEGORIES,
     DEFAULT_IDENTITY_WEIGHTS,
 };
