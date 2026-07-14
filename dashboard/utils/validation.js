@@ -73,11 +73,62 @@ function assertChannelIdMap(obj, allowedKeys, label) {
     }
 }
 
+/**
+ * Asserts a security config patch matches the { [moduleName]: { enabled?,
+ * actions? } } shape - module names and action names are both checked
+ * against the canonical lists so a typo becomes a clear 400, not a
+ * silently-ignored no-op.
+ * @param {Object} patch
+ * @param {string[]} allowedModules - shared/guildConfigStore.js SECURITY_MODULES
+ * @param {Object} allowedActionsByModule - shared/guildConfigStore.js SECURITY_ACTIONS
+ */
+function assertSecurityPatch(patch, allowedModules, allowedActionsByModule) {
+    if (!isPlainObject(patch)) throw new ValidationError('security must be an object');
+
+    for (const [moduleName, value] of Object.entries(patch)) {
+        if (!allowedModules.includes(moduleName)) {
+            throw new ValidationError(`Unknown security module: "${moduleName}"`);
+        }
+        if (!isPlainObject(value)) {
+            throw new ValidationError(`security.${moduleName} must be an object`);
+        }
+
+        for (const key of Object.keys(value)) {
+            if (key !== 'enabled' && key !== 'actions') {
+                throw new ValidationError(`Unknown key "${key}" in security.${moduleName} - expected "enabled" and/or "actions"`);
+            }
+        }
+
+        if (value.enabled !== undefined && typeof value.enabled !== 'boolean') {
+            throw new ValidationError(`security.${moduleName}.enabled must be a boolean`);
+        }
+
+        if (value.actions !== undefined) {
+            if (!isPlainObject(value.actions)) {
+                throw new ValidationError(`security.${moduleName}.actions must be an object`);
+            }
+
+            const allowedActions = allowedActionsByModule[moduleName]
+                ? Object.keys(allowedActionsByModule[moduleName])
+                : null;
+
+            for (const [actionName, actionValue] of Object.entries(value.actions)) {
+                if (allowedActions && !allowedActions.includes(actionName)) {
+                    throw new ValidationError(`Unknown action "${actionName}" for module "${moduleName}"`);
+                }
+                if (typeof actionValue !== 'boolean') {
+                    throw new ValidationError(`security.${moduleName}.actions.${actionName} must be a boolean`);
+                }
+            }
+        }
+    }
+}
+
 module.exports = {
     ValidationError,
     isPlainObject,
     assertBooleanMap,
     assertSnowflakeArray,
     assertChannelIdMap,
+    assertSecurityPatch,
 };
-
