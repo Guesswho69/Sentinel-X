@@ -11,9 +11,10 @@ const sharedStore = require('../../shared/guildConfigStore');
 const {
     ValidationError,
     isPlainObject,
-    assertBooleanMap,
     assertSnowflakeArray,
     assertChannelIdMap,
+    assertBooleanMap,
+    assertSecurityPatch,
 } = require('../utils/validation');
 
 /**
@@ -25,13 +26,14 @@ function getConfig(guildId, guildName) {
 }
 
 /**
- * Updates one or more security module toggles.
+ * Updates one or more security modules - each can adjust its on/off state
+ * and/or individual action toggles (e.g. delete/warn/timeout).
  * @param {string} guildId
  * @param {string} guildName
- * @param {Object} patch - e.g. { antiRaid: false, antiSpam: true }
+ * @param {Object} patch - e.g. { antiRaid: { enabled: false }, antiSpam: { actions: { timeout: false } } }
  */
 function updateSecurity(guildId, guildName, patch) {
-    assertBooleanMap(patch, sharedStore.SECURITY_MODULES, 'security');
+    assertSecurityPatch(patch, sharedStore.SECURITY_MODULES, sharedStore.SECURITY_ACTIONS);
     return sharedStore.saveGuildConfig(guildId, guildName, { security: patch });
 }
 
@@ -149,4 +151,3 @@ module.exports = {
     updateLogging,
     updateCommands,
 };
-
