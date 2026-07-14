@@ -59,12 +59,22 @@ function resolveGuildConfig(guildId, guildName) {
     const dashboardConfig = sharedConfigStore.getGuildConfig(guildId, guildName);
     let resolved = { ...DEFAULT_CONFIG };
 
-    // 1. Security module on/off toggles
+    // 1. Security module on/off toggles + per-action toggles. Dashboard
+    // schema is { enabled, actions: { [actionName]: boolean } } per module
+    // (see shared/guildConfigStore.js SECURITY_ACTIONS) - exposed here as
+    // config.<moduleName>.actionsAllowed so detection/response code can ask
+    // "am I allowed to delete/warn/timeout for this violation?" without
+    // knowing anything about the dashboard's storage shape.
     for (const moduleName of sharedConfigStore.SECURITY_MODULES) {
         if (resolved[moduleName]) {
+            const moduleToggle = dashboardConfig.security?.[moduleName] || {};
             resolved[moduleName] = {
                 ...resolved[moduleName],
-                enabled: dashboardConfig.security?.[moduleName] ?? resolved[moduleName].enabled,
+                enabled: moduleToggle.enabled ?? resolved[moduleName].enabled,
+                actionsAllowed: {
+                    ...(sharedConfigStore.SECURITY_ACTIONS[moduleName] || {}),
+                    ...(moduleToggle.actions || {}),
+                },
             };
         }
     }
@@ -129,7 +139,21 @@ function invalidateCache(guildId) {
     cache.delete(guildId);
 }
 
+/**
+ * Convenience check for "is this specific automated action allowed?" -
+ * defaults to true if the action isn't tracked for that module, so a
+ * typo'd or future action name never silently disables enforcement.
+ * @param {Object} moduleConfig - e.g. resolved.antiSpam
+ * @param {string} actionName - e.g. "delete", "timeout", "warn"
+ */
+function isActionAllowed(moduleConfig, actionName) {
+    if (!moduleConfig?.actionsAllowed) return true;
+    if (!(actionName in moduleConfig.actionsAllowed)) return true;
+    return !!moduleConfig.actionsAllowed[actionName];
+}
+
 module.exports = {
     getGuildConfig,
     invalidateCache,
+    isActionAllowed,
 };
